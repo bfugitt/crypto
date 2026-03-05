@@ -164,16 +164,18 @@
       };
 
       // Update active character for visualization based on typing
+      // NEW: Now watches 'userGuess' during challenge mode so the visualizer reacts!
+      const textToWatch = mode === 'challenge' ? userGuess : inputText;
       useEffect(() => {
-        if (inputText.length > 0) {
-          const lastChar = inputText.slice(-1);
+        if (textToWatch.length > 0) {
+          const lastChar = textToWatch.slice(-1);
           setActiveChar(lastChar);
           
           // Clear the active highlight after a short delay for a "typing" effect
           const timer = setTimeout(() => setActiveChar(null), 800);
           return () => clearTimeout(timer);
         }
-      }, [inputText]);
+      }, [textToWatch]);
 
       // Encoding Logic
       const getOutputText = () => {
@@ -508,18 +510,31 @@
                   <div className="relative z-10 w-full overflow-x-auto p-4 flex justify-center custom-scrollbar">
                     <div className="inline-flex flex-col gap-1">
                       {Array.from({ length: rails }).map((_, r) => {
-                        const str = inputText.replace(/\s+/g, '').toUpperCase();
+                        // NEW: Switch to challenge mode data if active
+                        let strToVisualize = inputText.replace(/\s+/g, '').toUpperCase();
+                        let targetLength = 0;
+                        
+                        if (mode === 'challenge') {
+                          strToVisualize = userGuess.replace(/\s+/g, '').toUpperCase();
+                          targetLength = currentChallenge.cipher.replace(/\s+/g, '').length;
+                        }
+
                         let currRow = 0; let dir = 1;
                         const rowChars = [];
+                        // Make sure we draw enough grid for the challenge length
+                        const displayLength = Math.max(strToVisualize.length, targetLength, 15);
                         
-                        for (let i = 0; i < Math.max(str.length, 15); i++) {
-                          const char = str[i];
-                          const isActive = i === str.length - 1 && activeChar;
+                        for (let i = 0; i < displayLength; i++) {
+                          const char = strToVisualize[i];
+                          const isActive = i === strToVisualize.length - 1 && activeChar;
                           
                           if (currRow === r) {
+                            // Identify empty target slots for the challenge mode framework
+                            const isChallengeTarget = mode === 'challenge' && i < targetLength && !char;
+                            
                             rowChars.push(
-                              <div key={i} className={`w-8 h-8 border flex items-center justify-center ${char ? (isActive ? 'bg-green-500 text-black shadow-[0_0_10px_rgba(0,255,65,0.7)] font-bold' : 'border-green-400 text-green-100') : 'border-green-800/30 text-transparent'}`}>
-                                {char || '-'}
+                              <div key={i} className={`w-8 h-8 border flex items-center justify-center ${char ? (isActive ? 'bg-green-500 text-black shadow-[0_0_10px_rgba(0,255,65,0.7)] font-bold' : 'border-green-400 text-green-100') : (isChallengeTarget ? 'border-green-500/50 text-green-500/50 border-dashed bg-green-950/30 font-bold' : 'border-green-800/30 text-transparent')}`}>
+                                {char || (isChallengeTarget ? '?' : '-')}
                               </div>
                             );
                           } else {
